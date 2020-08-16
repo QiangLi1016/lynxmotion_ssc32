@@ -1,3 +1,16 @@
+8/16/2020
+PC ROS controlling ssc32 is working.
+Start roscore (the server)
+> roscore
+Load controller and joint information
+> rosparam load example.config
+Start hardware control node
+> rosrun lynxmotion_ssc32 ssc32_node
+Supply motion instructions
+> rosrun lynxmotion_ssc32 pub_joints
+
+
+8/15/2020
 Just port ssc32.cpp using miniComPort
 Modified function:
 open_port()	App uses isOpenOK() and setConfiguration()

@@ -73,8 +73,8 @@ int main( int argc, char **argv )
 	}
 	else // Port flag is not provided, i is not incremented
 	{
-		std::cout << "port not specified -- defaulting to /dev/ttyUSB0" << std::endl;
-		port = "/dev/ttyUSB0";
+		std::cout << "port not specified -- defaulting to COM3" << std::endl;
+		port = "COM3"; //"/dev/ttyUSB0";
 	}
 
 	// Check if baud was provided as an argument
