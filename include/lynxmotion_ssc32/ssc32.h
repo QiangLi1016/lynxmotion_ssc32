@@ -2,14 +2,15 @@
 #define LYNX_MOTION_SSC32_SSC32_H
 
 #include <fcntl.h>
-#include <termios.h>
-#include <unistd.h>
+// #include <termios.h>
+// #include <unistd.h>
 #include <cstring>
 #include <iostream>
 #include <math.h>
 #include <string>
 #include <sstream>
 #include <cstdio>
+#include "lynxmotion_ssc32/MiniComPortU.h"
 
 namespace lynxmotion_ssc32
 {
@@ -130,6 +131,10 @@ class SSC32
 
 		int fd; // file descriptor for the serial port
 		int first_instruction[32];
+
+		TMiniComPort sp;	// Pointer to Serial Port object			
+		int read(int fd, char *buf, int size );
+		int write( int fd, char *msg, int size );
 };
 
 } //namespace

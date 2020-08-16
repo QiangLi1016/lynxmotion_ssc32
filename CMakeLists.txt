@@ -13,7 +13,7 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(ssc32 src/ssc32.cpp)
+add_library(ssc32 src/ssc32.cpp src/MiniComPortU.cpp)
 target_link_libraries(ssc32 ${catkin_LIBRARIES})
 
 add_library(ssc32_driver src/ssc32_driver.cpp)

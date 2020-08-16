@@ -22,97 +22,42 @@ SSC32::~SSC32( )
 	close_port( );
 }
 
+// Read function
+int SSC32::read(int fd, char *buf, int size ) {
+	return sp.Receive(buf, size);
+}
+
+// Write function
+int SSC32::write( int fd, char *msg, int size ) {
+       	return sp.Transmit(msg, size);
+}
+
 bool SSC32::open_port( const char *port, int baud )
 {
-	struct termios options;
-
-	close_port( );
-
-	switch( baud )
-	{
-		case 2400:
-			baud = B2400;
-			break;
-		case 9600:
-			baud = B9600;
-			break;
-		case 38400:
-			baud = B38400;
-			break;
-		case 115200:
-			baud = B115200;
-			break;
-		default:
-			printf( "ERROR: Invalid baud [%d] -- must be 2400, 9600, 38400, or 115200\n", baud );
-			return false;
-	}
-
-	fd = open( port, O_RDWR | O_NOCTTY );
-
-	if( fd < 0 )
-	{
-		printf( "ERROR: Unable to open device on port %s\n", port );
-		return false;
-	}
-
-	if( fcntl( fd, F_SETFL, 0 ) < 0 )
-	{
-		printf( "ERROR: port [%s] is already locked\n", port );
-		close_port( );
-		return false;
-	}
-
-	memset(&options, 0, sizeof(options));
-	cfsetispeed( &options, baud );
-	cfsetospeed( &options, baud );
-
-	options.c_iflag = IGNBRK | IGNPAR;
-	options.c_oflag = 0;
-	options.c_cflag |= CREAD | CS8 | CLOCAL;
-	options.c_lflag = 0;
-
-	if( tcsetattr( fd, TCSANOW, &options ) < 0 )
-	{
-		printf( "ERROR: setting termios options\n" );
-		close_port( );
-		return false;
-	}
-
-	// Make sure queues are empty
-	tcflush( fd, TCIOFLUSH );
-
-	printf( "Successfully opened port %s\n", port );
-
+	if (fd == 1) return true;
+	char *portName = (char *)port;
+	if (!sp.OpenOk(portName)) return false; 
+	if (!sp.SetProtocol(baud, 8, ONESTOPBIT, NOPARITY)) return false;
+	fd = 1;
 	return true;
 }
 
 bool SSC32::is_connected( )
 {
-	return ( fd != -1 );
+	if (fd == 1) return true;
+	return false;
 }
 
 void SSC32::close_port( )
 {
-	unsigned int i;
-
-	if( fd != -1 )
-	{
-		printf( "Closing port\n" );
-
-		close( fd );
-
-		fd = -1;
-
-		for( i = 0; i < SSC32::MAX_CHANNELS; i++ )
-			first_instruction[i] = 0;
-	}
+	sp.Close();
 }
 
 bool SSC32::send_message( const char *msg, int size )
 {
 	if( fd != -1 )
 	{
-		tcflush( fd, TCIOFLUSH );
+		// tcflush( fd, TCIOFLUSH );
 
 #if DEBUG
 		printf( "INFO: [send_message] Sending message: " );
@@ -128,7 +73,7 @@ bool SSC32::send_message( const char *msg, int size )
 		printf( "\n" );
 #endif
 
-		if( write( fd, msg, size ) < 0 )
+		if( write( fd, (char *)msg, size ) < 0 )
 		{
 #if DEBUG
 			printf( "ERROR: [send_message] Failed to write to device\n" );
@@ -155,7 +100,7 @@ unsigned int SSC32::recv_message( unsigned char *buf, unsigned int size )
 
 	while( total_bytes != size )
 	{
-		if( ( bytes_read = read( fd, buf + total_bytes, 1 ) ) < 0 )
+		if( ( bytes_read = read( fd, (char *)(buf + total_bytes), 1 ) ) < 0 )
 		{
 #if DEBUG
 			printf( "ERROR: [recv_message] Failed to read from device\n" );
@@ -211,16 +156,16 @@ bool SSC32::move_servo( struct ServoCommand cmd[], unsigned int n, int time )
 		}
 
 
-		sprintf( temp, "#%u P%u ", cmd[i].ch, cmd[i].pw );
+		sprintf_s( temp, "#%u P%u ", cmd[i].ch, cmd[i].pw );
 
-		strcat( msg, temp );
+		strcat_s( msg, temp );
 
 		if( first_instruction[cmd[i].ch] != 0 )
 		{
 			if( cmd[i].spd > 0 )
 			{
-				sprintf( temp, "S%d ", cmd[i].spd );
-				strcat( msg, temp );
+				sprintf_s( temp, "S%d ", cmd[i].spd );
+				strcat_s( msg, temp );
 			}
 		}
 		else // this is the first instruction for this channel
@@ -231,11 +176,11 @@ bool SSC32::move_servo( struct ServoCommand cmd[], unsigned int n, int time )
 	// for any channels to move the servo
 	if( time_flag == 0 && time > 0 )
 	{
-		sprintf( temp, "T%d ", time );
-		strcat( msg, temp );
+		sprintf_s( temp, "T%d ", time );
+		strcat_s( msg, temp );
 	}
 
-	strcat( msg, "\r" );
+	strcat_s( msg, "\r" );
 
 	result = send_message( msg, strlen( msg ) );
 
@@ -251,7 +196,7 @@ bool SSC32::move_servo( struct ServoCommand cmd[], unsigned int n, int time )
 bool SSC32::cancel_command( )
 {
 	char msg[4];
-	sprintf( msg, "%c \r", 27 );
+	sprintf_s( msg, "%c \r", 27 );
 
 	return send_message( msg, strlen( msg ) );
 }
@@ -293,12 +238,12 @@ bool SSC32::pulse_offset( unsigned int ch[], int value[], unsigned int n )
 			return false;
 		}
 
-		sprintf( temp, "#%u PO%d ", ch[i], value[i] );
+		sprintf_s( temp, "#%u PO%d ", ch[i], value[i] );
 
-		strcat( msg, temp );
+		strcat_s( msg, temp );
 	}
 
-	strcat( msg, "\r" );
+	strcat_s( msg, "\r" );
 
 	return send_message( msg, strlen( msg ) );
 }
@@ -332,12 +277,12 @@ bool SSC32::discrete_output( unsigned int ch[], LogicLevel lvl[], unsigned int n
 			return false;
 		}
 
-		sprintf( temp, "#%u %c ", ch[i], ( lvl[i] == High ) ? 'H' : 'L' );
+		sprintf_s( temp, "#%u %c ", ch[i], ( lvl[i] == High ) ? 'H' : 'L' );
 
-		strcat( msg, temp );
+		strcat_s( msg, temp );
 	}
 
-	strcat( msg, "\r" );
+	strcat_s( msg, "\r" );
 
 	return send_message( msg, strlen( msg ) );
 }
@@ -362,7 +307,7 @@ bool SSC32::byte_output( unsigned int bank, unsigned int value )
 		return false;
 	}
 
-	sprintf( msg, "#%d:%d \r", bank, value );
+	sprintf_s( msg, "#%d:%d \r", bank, value );
 
 	return send_message( msg, strlen( msg ) );
 }
@@ -382,7 +327,7 @@ bool SSC32::query_movement_status( )
 	}
 
 	// There is a delay of at least 50uS to 5mS, so sleep for 5ms.
-	usleep( 10000 );
+	Sleep( 10 );
 
 	// Continue reading from controller until a response is received
 	if( recv_message( &buffer, 1 ) != 1 )
@@ -415,7 +360,7 @@ int SSC32::query_pulse_width( unsigned int ch )
 		return false;
 	}
 
-	sprintf( msg, "QP%d \r", ch );
+	sprintf_s( msg, "QP%d \r", ch );
 
 	if( !send_message( msg, strlen( msg ) ) )
         {
@@ -426,7 +371,7 @@ int SSC32::query_pulse_width( unsigned int ch )
         }
 
 	// It can take up to 5ms before the controller responds, so sleep for 5ms.
-	usleep( 5000 );
+	Sleep( 5 );
 
 	if( recv_message( &buffer, 1 ) != 1 )
 	{
@@ -458,18 +403,18 @@ bool SSC32::read_digital_inputs( Inputs inputs[], unsigned int outputs[], unsign
 	{
 		switch( inputs[i] )
 		{
-			case PinA:  strcat( msg, "A " );  break;
-			case PinAL: strcat( msg, "AL " ); break;
-			case PinB:  strcat( msg, "B " );  break;
-			case PinBL: strcat( msg, "BL " ); break;
-			case PinC:  strcat( msg, "C " );  break;
-			case PinCL: strcat( msg, "CL " ); break;
-			case PinD:  strcat( msg, "D " );  break;
-			case PinDL: strcat( msg, "DL " ); break;
-			case PinE:  strcat( msg, "E " );  break;
-			case PinEL: strcat( msg, "EL " ); break;
-			case PinF:  strcat( msg, "F " );  break;
-			case PinFL: strcat( msg, "FL " ); break;
+			case PinA:  strcat_s( msg, "A " );  break;
+			case PinAL: strcat_s( msg, "AL " ); break;
+			case PinB:  strcat_s( msg, "B " );  break;
+			case PinBL: strcat_s( msg, "BL " ); break;
+			case PinC:  strcat_s( msg, "C " );  break;
+			case PinCL: strcat_s( msg, "CL " ); break;
+			case PinD:  strcat_s( msg, "D " );  break;
+			case PinDL: strcat_s( msg, "DL " ); break;
+			case PinE:  strcat_s( msg, "E " );  break;
+			case PinEL: strcat_s( msg, "EL " ); break;
+			case PinF:  strcat_s( msg, "F " );  break;
+			case PinFL: strcat_s( msg, "FL " ); break;
 			default:
 #if DEBUG
 				printf( "WARNING: [read_digital_inputs] Unrecognized input value [%d]\n", inputs[i] );
@@ -478,7 +423,7 @@ bool SSC32::read_digital_inputs( Inputs inputs[], unsigned int outputs[], unsign
 		}
 	}
 
-	strcat( msg, "\r" );
+	strcat_s( msg, "\r" );
 
 	if( !send_message( msg, strlen( msg ) ) )
         {
@@ -520,14 +465,14 @@ bool SSC32::read_analog_inputs( Inputs inputs[], float outputs[], unsigned int n
 	{
 		switch( inputs[i] )
 		{
-			case PinA: strcat( msg, "VA " ); break;
-			case PinB: strcat( msg, "VB " ); break;
-			case PinC: strcat( msg, "VC " ); break;
-			case PinD: strcat( msg, "VD " ); break;
-			case PinE: strcat( msg, "VE " ); break;
-			case PinF: strcat( msg, "VF " ); break;
-			case PinG: strcat( msg, "VG " ); break;
-			case PinH: strcat( msg, "VH " ); break;
+			case PinA: strcat_s( msg, "VA " ); break;
+			case PinB: strcat_s( msg, "VB " ); break;
+			case PinC: strcat_s( msg, "VC " ); break;
+			case PinD: strcat_s( msg, "VD " ); break;
+			case PinE: strcat_s( msg, "VE " ); break;
+			case PinF: strcat_s( msg, "VF " ); break;
+			case PinG: strcat_s( msg, "VG " ); break;
+			case PinH: strcat_s( msg, "VH " ); break;
 			default:
 #if DEBUG
 				printf( "WARNING: [read_analog_inputs] Unrecognized input value [%d]\n", inputs[i] );
@@ -536,7 +481,7 @@ bool SSC32::read_analog_inputs( Inputs inputs[], float outputs[], unsigned int n
 		}
 	}
 
-	strcat( msg, "\r" );
+	strcat_s( msg, "\r" );
 
 	if( !send_message( msg, strlen( msg ) ) )
         {
@@ -579,7 +524,7 @@ std::string SSC32::get_version( )
 		return "error";
 	}
 
-	usleep( 100000 );
+	Sleep( 10 );
 
 #if DEBUG
 	printf( "INFO: [get_version] Reading response\n" );

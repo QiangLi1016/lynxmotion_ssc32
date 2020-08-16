@@ -1,0 +1,11 @@
+Just port ssc32.cpp using miniComPort
+Modified function:
+open_port()	App uses isOpenOK() and setConfiguration()
+close_port()	App uses close_port()
+write()	App uses Transmit()
+read()	App uses Receive()
+is_connected() App uses isOpened() 
+
+Put MiniPort object inside ssc32 class
+modify the above 5 functions underneath
+
